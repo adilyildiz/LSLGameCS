@@ -46,7 +46,7 @@ public sealed class Launcher
         int selectedIndex = 0;
         string[] menuItems =
         [
-            "1. Yeni Kalibrasyon Yap ve Profil Kaydet",
+            "1. Hızlı Kalibrasyon Yap (~40 sn) ve Profil Kaydet",
             "2. Kayıtlı Profil Seç ve BCI Oyunu Oyna",
             "3. Hızlı Oyna (Klavye / Test Modu)",
             "4. Çıkış"
@@ -156,8 +156,8 @@ public sealed class Launcher
             subjectName: subject,
             width: _cfg.WindowWidth,
             height: _cfg.WindowHeight,
-            totalRuns: 2,
-            trialsPerRun: 10);
+            totalRuns: 1,
+            trialsPerRun: 8);
 
         calib.RunSession();
         Raylib.SetWindowTitle("LSL BCI Ball Game - Ana Menü");
@@ -181,9 +181,9 @@ public sealed class Launcher
 
         var (csp, lda) = profile.ToModel();
 
-        // Start online decoder
+        // Start online decoder with 2.0s responsive window
         using var sender = new ControlSender();
-        using var decoder = new OnlineDecoder(csp, lda, sender: sender);
+        using var decoder = new OnlineDecoder(csp, lda, windowSec: 2.0, sender: sender);
 
         // Feed online decoder from EEG inlet in background thread
         using var decodeCts = new CancellationTokenSource();

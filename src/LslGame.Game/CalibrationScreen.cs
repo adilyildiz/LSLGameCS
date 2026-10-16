@@ -40,8 +40,8 @@ public sealed class CalibrationScreen
         string subjectName = "sub-01",
         int width = 800,
         int height = 500,
-        int totalRuns = 2,
-        int trialsPerRun = 10)
+        int totalRuns = 1,
+        int trialsPerRun = 8)
     {
         _subjectName = subjectName;
         _width = width;
@@ -51,12 +51,12 @@ public sealed class CalibrationScreen
 
         var timing = new CalibrationTiming
         {
-            FixationSec = 2.0,
-            CueSec = 1.0,
-            ImagerySec = 4.0,
-            RestMinSec = 1.5,
-            RestMaxSec = 2.5,
-            InterRunPauseSec = 10.0
+            FixationSec = 1.0,
+            CueSec = 0.8,
+            ImagerySec = 2.5,
+            RestMinSec = 1.0,
+            RestMaxSec = 1.4,
+            InterRunPauseSec = 5.0
         };
 
         _sm = new CalibrationStateMachine(
@@ -108,7 +108,7 @@ public sealed class CalibrationScreen
 
     public BciProfile? RunSession()
     {
-        Raylib.SetWindowTitle($"Graz-BCI Kalibrasyon - {_subjectName}");
+        Raylib.SetWindowTitle($"Graz-BCI Hızlı Kalibrasyon - {_subjectName}");
         bool started = false;
         BciProfile? trainedProfile = null;
         string statusMessage = "Kalibrasyonu başlatmak için fareye tıklayın veya [SPACE] basın.";
@@ -151,7 +151,7 @@ public sealed class CalibrationScreen
                     break;
             }
 
-            Draw(started, trainedProfile, statusMessage);
+            Draw(started, trainedProfile, statusMessage, now);
         }
 
         return trainedProfile;
@@ -165,7 +165,7 @@ public sealed class CalibrationScreen
             recorded = new List<(double, double[])>(_recordedEeg);
         }
 
-        if (recorded.Count < 500)
+        if (recorded.Count < 300)
         {
             Console.WriteLine("[CalibrationScreen] Yetersiz EEG verisi kaydedildi.");
             return null;
@@ -181,8 +181,8 @@ public sealed class CalibrationScreen
 
         var filteredMatrix = filter.FilterBlock(rawMatrix);
 
-        // Epoching: imagery_start + 0.5s to 3.5s (3 seconds = 750 samples at 250 Hz)
-        int epochSamples = (int)(3.0 * 250.0);
+        // Epoching: imagery_start + 0.3s to 2.3s (2.0 seconds = 500 samples at 250 Hz)
+        int epochSamples = (int)(2.0 * 250.0);
         var epochsList = new List<double[,]>();
         var labelsList = new List<string>();
 
@@ -191,8 +191,8 @@ public sealed class CalibrationScreen
             if (!trial.Timestamps.TryGetValue("imagery_start", out double imgStart))
                 continue;
 
-            double windowStart = imgStart + 0.5;
-            double windowEnd = imgStart + 3.5;
+            double windowStart = imgStart + 0.3;
+            double windowEnd = imgStart + 2.3;
 
             // Find sample index in recorded
             int startIdx = -1;
@@ -257,7 +257,7 @@ public sealed class CalibrationScreen
         return profile;
     }
 
-    private void Draw(bool started, BciProfile? trainedProfile, string statusMessage)
+    private void Draw(bool started, BciProfile? trainedProfile, string statusMessage, double now)
     {
         Raylib.BeginDrawing();
         Raylib.ClearBackground(BgColor);
@@ -266,13 +266,13 @@ public sealed class CalibrationScreen
         float cy = _height / 2f;
 
         // Header
-        string title = $"GRAZ-BCI KALİBRASYON PROTOKOLÜ [{_subjectName}]";
+        string title = $"GRAZ-BCI HIZLI KALİBRASYON PROTOKOLÜ [{_subjectName}]";
         float titleW = GameFonts.MeasureText(title, 22).X;
         GameFonts.DrawText(title, cx - titleW / 2f, 24, 22, TextColor);
 
         if (!started)
         {
-            string info1 = "Ekrandaki yöne (SOL veya SAĞ) odaklanarak motor imgeleme yapın.";
+            string info1 = "Hızlı Kalibrasyon: Toplam 8 deneme (4 Sol El, 4 Sağ El) ~40 saniye sürer.";
             string info2 = "Sol ok çıktığında SOL ELİNİZİ, sağ ok çıktığında SAĞ ELİNİZİ hayal edin.";
             float w1 = GameFonts.MeasureText(info1, 16).X;
             float w2 = GameFonts.MeasureText(info2, 16).X;
@@ -325,9 +325,17 @@ public sealed class CalibrationScreen
 
                     if (_sm.Stage == CalibrationStage.Imagery)
                     {
-                        string imgHint = "Motor İmgeleme Devam Ediyor...";
-                        float hintW = GameFonts.MeasureText(imgHint, 18).X;
-                        GameFonts.DrawText(imgHint, cx - hintW / 2f, cy + 60, 18, Color.LightGray);
+                        float stageElapsed = (float)(now - _sm.StageStartTime);
+                        float stagePct = Math.Clamp(stageElapsed / (float)_sm.StageDuration, 0f, 1f);
+
+                        // Trial countdown bar under arrow
+                        int cBarW = 220;
+                        Raylib.DrawRectangle((int)(cx - cBarW / 2), (int)(cy + 45), cBarW, 6, BarBg);
+                        Raylib.DrawRectangle((int)(cx - cBarW / 2), (int)(cy + 45), (int)(cBarW * stagePct), 6, CueColor);
+
+                        string imgHint = "Motor İmgeleme Yapın...";
+                        float hintW = GameFonts.MeasureText(imgHint, 17).X;
+                        GameFonts.DrawText(imgHint, cx - hintW / 2f, cy + 62, 17, Color.LightGray);
                     }
                     break;
 
@@ -338,18 +346,22 @@ public sealed class CalibrationScreen
                     break;
 
                 case CalibrationStage.InterRunPause:
-                    string pauseStr = "Run Tamamlandı! Dinlenme Molası...";
+                    string pauseStr = "Dinlenme Molası...";
                     float pauseW = GameFonts.MeasureText(pauseStr, 22).X;
                     GameFonts.DrawText(pauseStr, cx - pauseW / 2f, cy - 12, 22, Color.Yellow);
                     break;
             }
 
-            // Progress HUD
-            string hud = $"Run: {_sm.CurrentRun + 1}/{_sm.TotalRuns} | Deneme: {_sm.CurrentTrialInRun + 1}/{_sm.TrialsPerRun}";
+            // Progress HUD with Estimated Time Remaining
+            int totalTrials = _sm.TotalRuns * _sm.TrialsPerRun;
+            int remainingTrials = Math.Max(0, totalTrials - _sm.GlobalTrialIndex);
+            int approxSecLeft = (int)(remainingTrials * 5.3);
+
+            string hud = $"Deneme: {_sm.CurrentTrialInRun + 1} / {_sm.TrialsPerRun}  (Kalan Süre: ~{approxSecLeft} sn)";
             GameFonts.DrawText(hud, 30, _height - 50, 18, DimText);
 
-            // Progress Bar
-            float progress = (float)_sm.GlobalTrialIndex / Math.Max(1, _sm.TotalRuns * _sm.TrialsPerRun);
+            // Session Progress Bar
+            float progress = (float)_sm.GlobalTrialIndex / Math.Max(1, totalTrials);
             int barW = _width - 60;
             Raylib.DrawRectangle(30, _height - 24, barW, 8, BarBg);
             Raylib.DrawRectangle(30, _height - 24, (int)(barW * progress), 8, BarFill);
@@ -357,7 +369,7 @@ public sealed class CalibrationScreen
         else
         {
             // Completed
-            string congrats = "TEBRİKLER! KALİBRASYON TAMAMLANDI";
+            string congrats = "TEBRİKLER! HIZLI KALİBRASYON TAMAMLANDI";
             float cW = GameFonts.MeasureText(congrats, 24).X;
             GameFonts.DrawText(congrats, cx - cW / 2f, cy - 60, 24, SuccessColor);
 
