@@ -111,7 +111,7 @@ public sealed class CalibrationScreen
         Raylib.SetWindowTitle($"Graz-BCI Kalibrasyon - {_subjectName}");
         bool started = false;
         BciProfile? trainedProfile = null;
-        string statusMessage = "Kalibrasyonu başlatmak için [SPACE] tuşuna basın.";
+        string statusMessage = "Kalibrasyonu başlatmak için fareye tıklayın veya [SPACE] basın.";
 
         while (!Raylib.WindowShouldClose())
         {
@@ -123,7 +123,7 @@ public sealed class CalibrationScreen
 
             if (!started)
             {
-                if (Raylib.IsKeyPressed(KeyboardKey.Space))
+                if (Raylib.IsKeyPressed(KeyboardKey.Space) || Raylib.IsMouseButtonPressed(MouseButton.Left))
                 {
                     started = true;
                     var startMarkers = _sm.StartSession(now);
@@ -147,7 +147,7 @@ public sealed class CalibrationScreen
             else
             {
                 // Completed
-                if (Raylib.IsKeyPressed(KeyboardKey.Enter) || Raylib.IsKeyPressed(KeyboardKey.Space))
+                if (Raylib.IsKeyPressed(KeyboardKey.Enter) || Raylib.IsKeyPressed(KeyboardKey.Space) || Raylib.IsMouseButtonPressed(MouseButton.Left))
                     break;
             }
 
@@ -368,7 +368,7 @@ public sealed class CalibrationScreen
                 GameFonts.DrawText(accText, cx - accW / 2f, cy - 10, 18, TextColor);
             }
 
-            string cont = "Ana menüye dönmek için [ENTER] veya [SPACE] basın.";
+            string cont = "Ana menüye dönmek için tıklayın veya [ENTER] / [SPACE] basın.";
             float contW = GameFonts.MeasureText(cont, 18).X;
             GameFonts.DrawText(cont, cx - contW / 2f, cy + 50, 18, CueColor);
         }

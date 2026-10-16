@@ -54,9 +54,40 @@ public sealed class Launcher
 
         string statusMessage = "";
 
+        float cx = _cfg.WindowWidth / 2f;
+        int startY = 165;
+        int cardH = 52;
+        int cardW = 500;
+        int cardSpacing = 15;
+        int startX = (int)(cx - cardW / 2);
+
         while (!Raylib.WindowShouldClose())
         {
-            // Navigation
+            Vector2 mousePos = Raylib.GetMousePosition();
+            bool mouseClicked = Raylib.IsMouseButtonPressed(MouseButton.Left);
+            bool isHoveringAnyCard = false;
+            bool triggerAction = false;
+
+            // Mouse hover and click detection
+            for (int i = 0; i < menuItems.Length; i++)
+            {
+                int y = startY + i * (cardH + cardSpacing);
+                var rect = new Rectangle(startX, y, cardW, cardH);
+                if (Raylib.CheckCollisionPointRec(mousePos, rect))
+                {
+                    selectedIndex = i;
+                    isHoveringAnyCard = true;
+                    if (mouseClicked)
+                    {
+                        triggerAction = true;
+                    }
+                    break;
+                }
+            }
+
+            Raylib.SetMouseCursor(isHoveringAnyCard ? MouseCursor.PointingHand : MouseCursor.Default);
+
+            // Keyboard navigation
             if (Raylib.IsKeyPressed(KeyboardKey.Down) || Raylib.IsKeyPressed(KeyboardKey.S))
                 selectedIndex = (selectedIndex + 1) % menuItems.Length;
             if (Raylib.IsKeyPressed(KeyboardKey.Up) || Raylib.IsKeyPressed(KeyboardKey.W))
@@ -64,6 +95,12 @@ public sealed class Launcher
 
             if (Raylib.IsKeyPressed(KeyboardKey.Enter) || Raylib.IsKeyPressed(KeyboardKey.Space))
             {
+                triggerAction = true;
+            }
+
+            if (triggerAction)
+            {
+                Raylib.SetMouseCursor(MouseCursor.Default);
                 if (selectedIndex == 0) // Kalibrasyon
                 {
                     RunCalibrationFlow();
@@ -244,7 +281,7 @@ public sealed class Launcher
         }
 
         // Instructions
-        string hint = "[YUKARI/AŞAĞI] veya [W/S] ile seçin, [ENTER] veya [SPACE] ile başlatın.";
+        string hint = "Fare ile tıklayarak seçin veya [YUKARI/AŞAĞI/ENTER] tuşlarını kullanın.";
         float hintW = GameFonts.MeasureText(hint, 15).X;
         GameFonts.DrawText(hint, cx - hintW / 2f, _cfg.WindowHeight - 40, 15, DimText);
 
