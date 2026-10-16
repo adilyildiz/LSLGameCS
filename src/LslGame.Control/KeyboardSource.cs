@@ -1,66 +1,120 @@
-﻿using SharpLSL;
 using LslGame.Core;
 
 namespace LslGame.Control;
 
 /// <summary>
-/// Reads keyboard input and pushes commands to the BCI_Control LSL outlet.
+/// Converts keyboard input into BCI_Control stream samples.
+/// Used for independent testing and debugging of the game engine.
 /// Mirrors Python control/keyboard_source.py — Öncelik 2.
-///
-/// Keys: l=left  r=right  d=down  u=up  s=stop  b=both  q=quit
 /// </summary>
-public sealed class KeyboardSource : IDisposable
+public sealed class KeyboardControlSource : IDisposable
 {
-    private readonly StreamOutlet _outlet;
+    private readonly ControlSender _sender;
+    private readonly Lock _lock = new();
+    private bool _keyLeft;
+    private bool _keyRight;
+    private bool _keyUp;
+    private bool _keyDown;
     private bool _disposed;
+    private readonly CancellationTokenSource _cts = new();
+    private Task? _loopTask;
 
-    private static readonly IReadOnlyDictionary<ConsoleKey, int> KeyMap =
-        new Dictionary<ConsoleKey, int>
-        {
-            [ConsoleKey.L] = ControlContract.CmdLeft,
-            [ConsoleKey.R] = ControlContract.CmdRight,
-            [ConsoleKey.D] = ControlContract.CmdDown,
-            [ConsoleKey.U] = ControlContract.CmdUp,
-            [ConsoleKey.S] = ControlContract.CmdStop,
-            [ConsoleKey.B] = ControlContract.CmdBoth,
-        };
+    public ControlMode Mode => _sender.Mode;
+    public double SampleRate => _sender.SampleRate;
 
-    public KeyboardSource()
+    public KeyboardControlSource(
+        ControlMode mode = ControlMode.Discrete,
+        double srate = LslStreamInfo.ControlSampleRate,
+        string sourceId = "Keyboard_Control_Source")
     {
-        var info = new StreamInfo(
-            name:       LslStreamInfo.ControlName,
-            type:       LslStreamInfo.ControlType,
-            channelCount: LslStreamInfo.ControlChannels,
-            nominalSrate: LslStreamInfo.ControlIrregular,
-            channelFormat: ChannelFormat.Int32,
-            sourceId:   "keyboard_source_cs");
-        _outlet = new StreamOutlet(info);
+        _sender = new ControlSender(mode, srate, sourceId);
     }
 
-    /// <summary>
-    /// Runs the keyboard loop until 'q' is pressed or <paramref name="ct"/> is cancelled.
-    /// </summary>
-    public Task RunAsync(CancellationToken ct = default) => Task.Run(() =>
+    public void SetKeys(bool left = false, bool right = false, bool up = false, bool down = false)
     {
-        Console.WriteLine("[KeyboardSource] Keys: L R D U S B  |  Q=quit");
-        while (!ct.IsCancellationRequested)
+        lock (_lock)
         {
-            if (!Console.KeyAvailable) { Thread.Sleep(10); continue; }
-            var key = Console.ReadKey(intercept: true).Key;
-            if (key == ConsoleKey.Q) break;
-            if (KeyMap.TryGetValue(key, out int cmd))
-            {
-                _outlet.PushSample(new[] { cmd });
-                var marker = ControlContract.CommandToMarker(cmd);
-                Console.WriteLine($"[KeyboardSource] pushed cmd={cmd} ({marker})");
-            }
+            _keyLeft = left;
+            _keyRight = right;
+            _keyUp = up;
+            _keyDown = down;
         }
-    }, ct);
+    }
+
+    public void Step()
+    {
+        bool l, r, u, d;
+        lock (_lock)
+        {
+            l = _keyLeft;
+            r = _keyRight;
+            u = _keyUp;
+            d = _keyDown;
+        }
+
+        if (Mode == ControlMode.Discrete)
+        {
+            if (l)
+                _sender.SendDiscrete(pLeft: 1f, pRight: 0f, pUp: 0f, pDown: 0f, pRest: 0f);
+            else if (r)
+                _sender.SendDiscrete(pLeft: 0f, pRight: 1f, pUp: 0f, pDown: 0f, pRest: 0f);
+            else if (u)
+                _sender.SendDiscrete(pLeft: 0f, pRight: 0f, pUp: 1f, pDown: 0f, pRest: 0f);
+            else if (d)
+                _sender.SendDiscrete(pLeft: 0f, pRight: 0f, pUp: 0f, pDown: 1f, pRest: 0f);
+            else
+                _sender.SendDiscrete(pLeft: 0f, pRight: 0f, pUp: 0f, pDown: 0f, pRest: 1f);
+        }
+        else
+        {
+            float vx = 0f;
+            float vy = 0f;
+            if (l) vx -= 1f;
+            if (r) vx += 1f;
+            if (u) vy += 1f;
+            if (d) vy -= 1f;
+            _sender.SendContinuous(vx, vy);
+        }
+    }
+
+    public void StartConsoleLoop(CancellationToken externalCt = default)
+    {
+        var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token, externalCt);
+        var ct = linkedCts.Token;
+
+        _loopTask = Task.Run(async () =>
+        {
+            int intervalMs = (int)(1000.0 / SampleRate);
+            using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(Math.Max(1, intervalMs)));
+
+            Console.WriteLine("[KeyboardControlSource] Use Left/Right/Up/Down arrows or A/D/W/S. Press Q to exit.");
+
+            while (!ct.IsCancellationRequested && await timer.WaitForNextTickAsync(ct))
+            {
+                if (Console.KeyAvailable)
+                {
+                    var key = Console.ReadKey(intercept: true).Key;
+                    if (key == ConsoleKey.Q) break;
+
+                    SetKeys(
+                        left:  key is ConsoleKey.LeftArrow or ConsoleKey.A or ConsoleKey.L,
+                        right: key is ConsoleKey.RightArrow or ConsoleKey.D or ConsoleKey.R,
+                        up:    key is ConsoleKey.UpArrow or ConsoleKey.W or ConsoleKey.U,
+                        down:  key is ConsoleKey.DownArrow or ConsoleKey.S);
+                }
+
+                Step();
+            }
+        }, ct);
+    }
 
     public void Dispose()
     {
         if (_disposed) return;
         _disposed = true;
-        _outlet.Dispose();
+        _cts.Cancel();
+        _sender.Dispose();
+        _cts.Dispose();
     }
 }
+
