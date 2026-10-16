@@ -401,26 +401,38 @@ public sealed class BallRollGame : IDisposable
         Raylib.ClearBackground(BgColor);
 
         // Arena subtle border
-        Raylib.DrawRectangleLines(10, 10, (int)_logic.ArenaWidth - 20, (int)_logic.ArenaHeight - 20, new Color(45, 50, 70, 255));
+        Raylib.DrawRectangleLines(10, 10, (int)_logic.ArenaWidth - 20, (int)_logic.ArenaHeight - 20, new Color(40, 45, 65, 255));
 
-        // Target (Halo + Circle)
+        // 1. Draw the Rolling Plane / Runway Track
+        DrawTrack();
+
+        // 2. Target (Beacon Glow + Dock + Body)
         var targetPos = new Vector2(_logic.TargetX, _logic.TargetY);
-        Raylib.DrawCircleV(targetPos, _logic.TargetRadius + 12f, TargetHalo);
+        float targetPulse = (float)(Math.Sin(Raylib.GetTime() * 4.0) * 3.0);
+        Raylib.DrawCircleV(targetPos, _logic.TargetRadius + 14f + targetPulse, TargetHalo);
         Raylib.DrawCircleV(targetPos, _logic.TargetRadius, TargetColor);
+        Raylib.DrawCircleLines((int)targetPos.X, (int)targetPos.Y, _logic.TargetRadius, new Color(255, 240, 160, 220));
 
-        // Ball (Halo + Circle)
+        // 3. Ball (Ground shadow + Halo + Body + Specular highlight)
         var ballPos = new Vector2(_logic.BallX, _logic.BallY);
+        // Ground shadow directly under the ball onto the track plane
+        Raylib.DrawEllipse((int)ballPos.X, (int)(ballPos.Y + _logic.BallRadius - 1), _logic.BallRadius * 0.9f, 6f, new Color(8, 10, 18, 200));
+
+        // Ball glow & sphere
         Raylib.DrawCircleV(ballPos, _logic.BallRadius + 10f, BallHalo);
         Raylib.DrawCircleV(ballPos, _logic.BallRadius, BallColor);
+        Raylib.DrawCircleLines((int)ballPos.X, (int)ballPos.Y, _logic.BallRadius, new Color(200, 245, 255, 200));
+        // Specular highlight for 3D sphere feel
+        Raylib.DrawCircle((int)(ballPos.X - 5), (int)(ballPos.Y - 5), 4.5f, new Color(255, 255, 255, 140));
 
-        // Cue Direction / Arrow (Center top)
+        // 4. Cue Direction / Arrow (Center top)
         string cueText = _logic.TargetSide == "left" ? "SOLA GİT" : "SAĞA GİT";
         var textSize = GameFonts.MeasureText(cueText, 24);
         float cueX = _logic.CenterX - textSize.X / 2f;
-        GameFonts.DrawText(cueText, cueX, 90, 24, CueColor);
+        GameFonts.DrawText(cueText, cueX, 85, 24, CueColor);
 
         // Arrow triangle
-        float arrowY = 102;
+        float arrowY = 97;
         if (_logic.TargetSide == "left")
         {
             var p1 = new Vector2(cueX - 25, arrowY);
@@ -436,7 +448,7 @@ public sealed class BallRollGame : IDisposable
             Raylib.DrawTriangle(p1, p3, p2, CueColor);
         }
 
-        // HUD - Row 1
+        // 5. HUD - Row 1
         string stats = $"İsabet: {_logic.Hits}  |  İska: {_logic.Misses}  |  Doğruluk: %{_logic.Accuracy:F0}";
         GameFonts.DrawText(stats, 25, 20, 18, TextColor);
 
@@ -445,7 +457,7 @@ public sealed class BallRollGame : IDisposable
             : "BCI: SİNYAL YOK";
         GameFonts.DrawText(cmdStr, _logic.ArenaWidth - 260, 20, 18, cmd.HasSignal ? Color.LightGray : MissColor);
 
-        // HUD - Row 2
+        // 6. HUD - Row 2
         string targetLabel = $"Hedef: {(_logic.TargetSide == "left" ? "SOL" : "SAĞ")}";
         GameFonts.DrawText(targetLabel, 25, 48, 18, TextColor);
 
@@ -477,6 +489,119 @@ public sealed class BallRollGame : IDisposable
         }
 
         Raylib.EndDrawing();
+    }
+
+    private void DrawTrack()
+    {
+        float cy = _logic.CenterY;
+        float cx = _logic.CenterX;
+        float trackX = 40f;
+        float trackW = _logic.ArenaWidth - 80f;
+        float trackH = 104f;
+        float trackY = cy - trackH / 2f;
+
+        // 1. Track Outer Bed / Platform (Glassmorphic tech slab)
+        var outerRect = new Rectangle(trackX, trackY, trackW, trackH);
+        Raylib.DrawRectangleRounded(outerRect, 0.15f, 6, new Color(24, 28, 44, 255));
+        Raylib.DrawRectangleRoundedLines(outerRect, 0.15f, 6, new Color(42, 48, 72, 255));
+
+        // 2. Inner Rolling Trench / Channel (deeper groove)
+        float trenchH = 70f;
+        float trenchY = cy - trenchH / 2f;
+        var trenchRect = new Rectangle(trackX + 6, trenchY, trackW - 12, trenchH);
+        Raylib.DrawRectangleRounded(trenchRect, 0.12f, 6, new Color(15, 18, 30, 255));
+        Raylib.DrawRectangleRoundedLines(trenchRect, 0.12f, 6, new Color(30, 36, 56, 255));
+
+        // 3. Glowing Neon Guide Rails (Top and Bottom)
+        float railTopY = cy - 42f;
+        float railBotY = cy + 42f;
+        float railStartX = trackX + 15;
+        float railEndX = trackX + trackW - 15;
+
+        // Glow halos for rails
+        Raylib.DrawLineEx(new Vector2(railStartX, railTopY), new Vector2(railEndX, railTopY), 4f, new Color(0, 180, 240, 45));
+        Raylib.DrawLineEx(new Vector2(railStartX, railBotY), new Vector2(railEndX, railBotY), 4f, new Color(0, 180, 240, 45));
+
+        // Crisp neon rail cores
+        Raylib.DrawLineEx(new Vector2(railStartX, railTopY), new Vector2(railEndX, railTopY), 1.5f, new Color(0, 210, 255, 170));
+        Raylib.DrawLineEx(new Vector2(railStartX, railBotY), new Vector2(railEndX, railBotY), 1.5f, new Color(0, 210, 255, 170));
+
+        // 4. Metric ticks / graduation marks along the track rails
+        for (float x = trackX + 60; x <= trackX + trackW - 60; x += 30f)
+        {
+            Raylib.DrawLineV(new Vector2(x, railTopY), new Vector2(x, railTopY + 5), new Color(70, 90, 130, 140));
+            Raylib.DrawLineV(new Vector2(x, railBotY), new Vector2(x, railBotY - 5), new Color(70, 90, 130, 140));
+        }
+
+        // 5. Centerline: Dashed guiding stripe along CenterY
+        for (float x = trackX + 60; x < trackX + trackW - 60; x += 28f)
+        {
+            Raylib.DrawLineV(new Vector2(x, cy), new Vector2(x + 14, cy), new Color(50, 68, 105, 120));
+        }
+
+        // 6. Center Origin Dock / Neutral Starting Zone
+        Raylib.DrawCircleLines((int)cx, (int)cy, 28f, new Color(0, 200, 255, 60));
+        Raylib.DrawCircleLines((int)cx, (int)cy, 12f, new Color(0, 200, 255, 40));
+        Raylib.DrawLineV(new Vector2(cx, cy - 20), new Vector2(cx, cy + 20), new Color(0, 200, 255, 50));
+
+        // 7. Dynamic Directional Runway Chevrons (Flowing towards target)
+        bool isLeft = _logic.TargetSide == "left";
+        float time = (float)Raylib.GetTime();
+        float pulse = (float)(Math.Sin(time * 5.0) * 0.5 + 0.5);
+
+        float flowStart = cx;
+        float flowEnd = isLeft ? 100f : _logic.ArenaWidth - 100f;
+        int numChevrons = 5;
+
+        for (int i = 1; i <= numChevrons; i++)
+        {
+            float t = (float)i / (numChevrons + 1);
+            float chX = flowStart + (flowEnd - flowStart) * t;
+
+            // Offset with time to create animated flowing runner effect
+            float animOffset = isLeft ? -((time * 40f) % 30f) : ((time * 40f) % 30f);
+            float drawX = chX + animOffset;
+
+            if (drawX > 120 && drawX < _logic.ArenaWidth - 120)
+            {
+                int alpha = (int)(80 + 90 * pulse);
+                var arrowColor = new Color(0, 210, 255, alpha);
+                float size = 8f;
+                if (isLeft)
+                {
+                    Raylib.DrawLineEx(new Vector2(drawX + size, cy - size), new Vector2(drawX, cy), 2f, arrowColor);
+                    Raylib.DrawLineEx(new Vector2(drawX, cy), new Vector2(drawX + size, cy + size), 2f, arrowColor);
+                }
+                else
+                {
+                    Raylib.DrawLineEx(new Vector2(drawX - size, cy - size), new Vector2(drawX, cy), 2f, arrowColor);
+                    Raylib.DrawLineEx(new Vector2(drawX, cy), new Vector2(drawX - size, cy + size), 2f, arrowColor);
+                }
+            }
+        }
+
+        // 8. Goal Sockets / Receptacle Docks on Left and Right
+        DrawGoalDock(100f, cy, isLeft);
+        DrawGoalDock(_logic.ArenaWidth - 100f, cy, !isLeft);
+    }
+
+    private void DrawGoalDock(float x, float y, bool isActiveTarget)
+    {
+        // Receptacle base ring
+        Color dockColor = isActiveTarget ? new Color(255, 200, 50, 160) : new Color(45, 55, 80, 120);
+        Color dockGlow = isActiveTarget ? new Color(255, 200, 50, 40) : new Color(20, 25, 40, 80);
+
+        Raylib.DrawCircleV(new Vector2(x, y), 48f, dockGlow);
+        Raylib.DrawCircleLines((int)x, (int)y, 48f, dockColor);
+        Raylib.DrawCircleLines((int)x, (int)y, 44f, new Color((int)dockColor.R, (int)dockColor.G, (int)dockColor.B, 60));
+
+        // Subtly label target zone
+        if (isActiveTarget)
+        {
+            string label = "HEDEF BÖLGESİ";
+            float lw = GameFonts.MeasureText(label, 13).X;
+            GameFonts.DrawText(label, x - lw / 2f, y + 54, 13, TargetColor);
+        }
     }
 
     public void Dispose()
