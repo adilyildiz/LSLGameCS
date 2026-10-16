@@ -358,11 +358,23 @@ public sealed class BallRollGame : IDisposable
 
     public void Run()
     {
-        Raylib.InitWindow((int)_logic.ArenaWidth, (int)_logic.ArenaHeight, _cfg.Title);
-        Raylib.SetTargetFPS(_cfg.TargetFps);
+        bool ownsWindow = false;
+        if (!Raylib.IsWindowReady())
+        {
+            Raylib.InitWindow((int)_logic.ArenaWidth, (int)_logic.ArenaHeight, _cfg.Title);
+            Raylib.SetTargetFPS(_cfg.TargetFps);
+            ownsWindow = true;
+        }
+        else
+        {
+            Raylib.SetWindowTitle(_cfg.Title);
+        }
 
         while (!Raylib.WindowShouldClose())
         {
+            if (Raylib.IsKeyPressed(KeyboardKey.Escape))
+                break;
+
             float dt = Raylib.GetFrameTime();
 
             // Keyboard direct fallback / override
@@ -377,7 +389,10 @@ public sealed class BallRollGame : IDisposable
         }
 
         _markerPub?.Push(Markers.GameEnd);
-        Raylib.CloseWindow();
+        if (ownsWindow)
+        {
+            Raylib.CloseWindow();
+        }
     }
 
     private void Draw(ControlCommand cmd)
@@ -385,62 +400,69 @@ public sealed class BallRollGame : IDisposable
         Raylib.BeginDrawing();
         Raylib.ClearBackground(BgColor);
 
+        // Arena subtle border
+        Raylib.DrawRectangleLines(10, 10, (int)_logic.ArenaWidth - 20, (int)_logic.ArenaHeight - 20, new Color(45, 50, 70, 255));
+
         // Target (Halo + Circle)
         var targetPos = new Vector2(_logic.TargetX, _logic.TargetY);
-        Raylib.DrawCircleV(targetPos, _logic.TargetRadius + 10f, TargetHalo);
+        Raylib.DrawCircleV(targetPos, _logic.TargetRadius + 12f, TargetHalo);
         Raylib.DrawCircleV(targetPos, _logic.TargetRadius, TargetColor);
 
         // Ball (Halo + Circle)
         var ballPos = new Vector2(_logic.BallX, _logic.BallY);
-        Raylib.DrawCircleV(ballPos, _logic.BallRadius + 8f, BallHalo);
+        Raylib.DrawCircleV(ballPos, _logic.BallRadius + 10f, BallHalo);
         Raylib.DrawCircleV(ballPos, _logic.BallRadius, BallColor);
 
         // Cue Direction / Arrow (Center top)
-        string cueText = _logic.TargetSide == "left" ? "SOLA GIT" : "SAGA GIT";
-        int textW = Raylib.MeasureText(cueText, 26);
-        int cueX = (int)(_logic.CenterX - textW / 2);
-        Raylib.DrawText(cueText, cueX, 100, 26, CueColor);
+        string cueText = _logic.TargetSide == "left" ? "SOLA GİT" : "SAĞA GİT";
+        var textSize = GameFonts.MeasureText(cueText, 24);
+        float cueX = _logic.CenterX - textSize.X / 2f;
+        GameFonts.DrawText(cueText, cueX, 90, 24, CueColor);
 
         // Arrow triangle
+        float arrowY = 102;
         if (_logic.TargetSide == "left")
         {
-            var p1 = new Vector2(cueX - 25, 113);
-            var p2 = new Vector2(cueX - 10, 103);
-            var p3 = new Vector2(cueX - 10, 123);
+            var p1 = new Vector2(cueX - 25, arrowY);
+            var p2 = new Vector2(cueX - 10, arrowY - 10);
+            var p3 = new Vector2(cueX - 10, arrowY + 10);
             Raylib.DrawTriangle(p1, p3, p2, CueColor);
         }
         else
         {
-            var p1 = new Vector2(cueX + textW + 25, 113);
-            var p2 = new Vector2(cueX + textW + 10, 123);
-            var p3 = new Vector2(cueX + textW + 10, 103);
+            var p1 = new Vector2(cueX + textSize.X + 25, arrowY);
+            var p2 = new Vector2(cueX + textSize.X + 10, arrowY + 10);
+            var p3 = new Vector2(cueX + textSize.X + 10, arrowY - 10);
             Raylib.DrawTriangle(p1, p3, p2, CueColor);
         }
 
         // HUD - Row 1
-        string stats = $"Isabet: {_logic.Hits} / Iska: {_logic.Misses} / Dogruluk: %{_logic.Accuracy:F0}";
-        Raylib.DrawText(stats, 20, 16, 20, TextColor);
+        string stats = $"İsabet: {_logic.Hits}  |  İska: {_logic.Misses}  |  Doğruluk: %{_logic.Accuracy:F0}";
+        GameFonts.DrawText(stats, 25, 20, 18, TextColor);
 
         string cmdStr = cmd.HasSignal
-            ? $"BCI Komut: {(cmd.Direction == Direction.Left ? "SOL" : cmd.Direction == Direction.Right ? "SAG" : "DINLENME")}"
-            : "BCI: SINYAL YOK";
-        Raylib.DrawText(cmdStr, (int)_logic.ArenaWidth - 250, 16, 18, cmd.HasSignal ? Color.LightGray : MissColor);
+            ? $"BCI Komut: {(cmd.Direction == Direction.Left ? "SOL" : cmd.Direction == Direction.Right ? "SAĞ" : "DİNLENME")}"
+            : "BCI: SİNYAL YOK";
+        GameFonts.DrawText(cmdStr, _logic.ArenaWidth - 260, 20, 18, cmd.HasSignal ? Color.LightGray : MissColor);
 
         // HUD - Row 2
-        string targetLabel = $"Hedef: {(_logic.TargetSide == "left" ? "SOL" : "SAG")}";
-        Raylib.DrawText(targetLabel, 20, 48, 20, TextColor);
+        string targetLabel = $"Hedef: {(_logic.TargetSide == "left" ? "SOL" : "SAĞ")}";
+        GameFonts.DrawText(targetLabel, 25, 48, 18, TextColor);
 
         if (cmd.IsSimulator)
-            Raylib.DrawText("SIMULASYON", (int)_logic.ArenaWidth - 250, 48, 18, Color.Yellow);
+            GameFonts.DrawText("SİMÜLASYON", _logic.ArenaWidth - 260, 48, 18, Color.Yellow);
+
+        // Return hint at bottom
+        GameFonts.DrawText("[ESC] Menüye Dön", 25, _logic.ArenaHeight - 32, 14, new Color(130, 135, 155, 255));
 
         // Outcome feedback banner during pause
         if (_logic.IsPaused && _logic.LastOutcome != null)
         {
             string outcomeText = _logic.LastOutcome switch
             {
-                "hit"     => "ISABET!",
+                "hit"     => "İSABET!",
                 "miss"    => "ISKA!",
-                "timeout" => "ZAMAN ASIMI!",
+                "timeout" => "ZAMAN AŞIMI!",
                 _         => "Dinlenme..."
             };
             Color outcomeColor = _logic.LastOutcome switch
@@ -450,8 +472,8 @@ public sealed class BallRollGame : IDisposable
                 "timeout" => TimeoutColor,
                 _         => TextColor
             };
-            int bannerW = Raylib.MeasureText(outcomeText, 32);
-            Raylib.DrawText(outcomeText, (int)(_logic.CenterX - bannerW / 2), (int)(_logic.CenterY - 40), 32, outcomeColor);
+            var bannerSize = GameFonts.MeasureText(outcomeText, 32);
+            GameFonts.DrawText(outcomeText, _logic.CenterX - bannerSize.X / 2f, _logic.CenterY - 40, 32, outcomeColor);
         }
 
         Raylib.EndDrawing();

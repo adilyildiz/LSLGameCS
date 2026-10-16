@@ -108,12 +108,16 @@ public sealed class CalibrationScreen
 
     public BciProfile? RunSession()
     {
+        Raylib.SetWindowTitle($"Graz-BCI Kalibrasyon - {_subjectName}");
         bool started = false;
         BciProfile? trainedProfile = null;
-        string statusMessage = "Kalibrasyonu baslatmak icin [SPACE] tusuna basin.";
+        string statusMessage = "Kalibrasyonu başlatmak için [SPACE] tuşuna basın.";
 
         while (!Raylib.WindowShouldClose())
         {
+            if (Raylib.IsKeyPressed(KeyboardKey.Escape))
+                break;
+
             PollEeg();
             double now = LSL.GetLocalClock();
 
@@ -136,7 +140,7 @@ public sealed class CalibrationScreen
 
                 if (_sm.IsCompleted && trainedProfile == null)
                 {
-                    statusMessage = "Veriler isleniyor ve model egitiliyor...";
+                    statusMessage = "Veriler işleniyor ve model eğitiliyor...";
                     trainedProfile = TrainModel();
                 }
             }
@@ -215,7 +219,7 @@ public sealed class CalibrationScreen
 
         if (epochsList.Count < 4)
         {
-            Console.WriteLine("[CalibrationScreen] Epok sayisi egitim icin yetersiz.");
+            Console.WriteLine("[CalibrationScreen] Epok sayısı eğitim için yetersiz.");
             return null;
         }
 
@@ -262,21 +266,23 @@ public sealed class CalibrationScreen
         float cy = _height / 2f;
 
         // Header
-        string title = $"GRAZ-BCI KALIBRASYON PROTOKOLU [{_subjectName}]";
-        int titleW = Raylib.MeasureText(title, 22);
-        Raylib.DrawText(title, (int)(cx - titleW / 2), 24, 22, TextColor);
+        string title = $"GRAZ-BCI KALİBRASYON PROTOKOLÜ [{_subjectName}]";
+        float titleW = GameFonts.MeasureText(title, 22).X;
+        GameFonts.DrawText(title, cx - titleW / 2f, 24, 22, TextColor);
 
         if (!started)
         {
-            string info1 = "Ekrandaki yone (SOL veya SAG) odaklanarak motor imgeleme yapin.";
-            string info2 = "Sol ok ciktiginda SOL ELINIZI, sag ok ciktiginda SAG ELINIZI hayal edin.";
-            int w1 = Raylib.MeasureText(info1, 16);
-            int w2 = Raylib.MeasureText(info2, 16);
-            Raylib.DrawText(info1, (int)(cx - w1 / 2), (int)(cy - 50), 16, DimText);
-            Raylib.DrawText(info2, (int)(cx - w2 / 2), (int)(cy - 20), 16, DimText);
+            string info1 = "Ekrandaki yöne (SOL veya SAĞ) odaklanarak motor imgeleme yapın.";
+            string info2 = "Sol ok çıktığında SOL ELİNİZİ, sağ ok çıktığında SAĞ ELİNİZİ hayal edin.";
+            float w1 = GameFonts.MeasureText(info1, 16).X;
+            float w2 = GameFonts.MeasureText(info2, 16).X;
+            GameFonts.DrawText(info1, cx - w1 / 2f, cy - 50, 16, DimText);
+            GameFonts.DrawText(info2, cx - w2 / 2f, cy - 20, 16, DimText);
 
-            int startW = Raylib.MeasureText(statusMessage, 20);
-            Raylib.DrawText(statusMessage, (int)(cx - startW / 2), (int)(cy + 50), 20, CueColor);
+            float startW = GameFonts.MeasureText(statusMessage, 20).X;
+            GameFonts.DrawText(statusMessage, cx - startW / 2f, cy + 50, 20, CueColor);
+
+            GameFonts.DrawText("[ESC] Ana Menüye Dön", 25, _height - 35, 14, DimText);
         }
         else if (!_sm.IsCompleted)
         {
@@ -295,9 +301,9 @@ public sealed class CalibrationScreen
                 case CalibrationStage.Imagery:
                     string cls = _sm.CurrentClass ?? "rest";
                     bool isLeft = cls == "left";
-                    string cueText = isLeft ? "SOL EL" : (cls == "right" ? "SAG EL" : "DINLENME");
-                    int cueW = Raylib.MeasureText(cueText, 28);
-                    Raylib.DrawText(cueText, (int)(cx - cueW / 2), (int)(cy - 80), 28, CueColor);
+                    string cueText = isLeft ? "SOL EL" : (cls == "right" ? "SAĞ EL" : "DİNLENME");
+                    float cueW = GameFonts.MeasureText(cueText, 28).X;
+                    GameFonts.DrawText(cueText, cx - cueW / 2f, cy - 80, 28, CueColor);
 
                     // Direction Arrow
                     float arrowW = 40;
@@ -319,28 +325,28 @@ public sealed class CalibrationScreen
 
                     if (_sm.Stage == CalibrationStage.Imagery)
                     {
-                        string imgHint = "Motor Imgeleme Devam Ediyor...";
-                        int hintW = Raylib.MeasureText(imgHint, 18);
-                        Raylib.DrawText(imgHint, (int)(cx - hintW / 2), (int)(cy + 60), 18, Color.LightGray);
+                        string imgHint = "Motor İmgeleme Devam Ediyor...";
+                        float hintW = GameFonts.MeasureText(imgHint, 18).X;
+                        GameFonts.DrawText(imgHint, cx - hintW / 2f, cy + 60, 18, Color.LightGray);
                     }
                     break;
 
                 case CalibrationStage.Rest:
                     string restStr = "Dinlenme...";
-                    int restW = Raylib.MeasureText(restStr, 24);
-                    Raylib.DrawText(restStr, (int)(cx - restW / 2), (int)(cy - 12), 24, DimText);
+                    float restW = GameFonts.MeasureText(restStr, 24).X;
+                    GameFonts.DrawText(restStr, cx - restW / 2f, cy - 12, 24, DimText);
                     break;
 
                 case CalibrationStage.InterRunPause:
-                    string pauseStr = "Run Tamamlandi! Dinlenme Molasi...";
-                    int pauseW = Raylib.MeasureText(pauseStr, 22);
-                    Raylib.DrawText(pauseStr, (int)(cx - pauseW / 2), (int)(cy - 12), 22, Color.Yellow);
+                    string pauseStr = "Run Tamamlandı! Dinlenme Molası...";
+                    float pauseW = GameFonts.MeasureText(pauseStr, 22).X;
+                    GameFonts.DrawText(pauseStr, cx - pauseW / 2f, cy - 12, 22, Color.Yellow);
                     break;
             }
 
             // Progress HUD
             string hud = $"Run: {_sm.CurrentRun + 1}/{_sm.TotalRuns} | Deneme: {_sm.CurrentTrialInRun + 1}/{_sm.TrialsPerRun}";
-            Raylib.DrawText(hud, 30, _height - 50, 18, DimText);
+            GameFonts.DrawText(hud, 30, _height - 50, 18, DimText);
 
             // Progress Bar
             float progress = (float)_sm.GlobalTrialIndex / Math.Max(1, _sm.TotalRuns * _sm.TrialsPerRun);
@@ -351,20 +357,20 @@ public sealed class CalibrationScreen
         else
         {
             // Completed
-            string congrats = "TEBRIKLER! KALIBRASYON TAMAMLANDI";
-            int cW = Raylib.MeasureText(congrats, 24);
-            Raylib.DrawText(congrats, (int)(cx - cW / 2), (int)(cy - 60), 24, SuccessColor);
+            string congrats = "TEBRİKLER! KALİBRASYON TAMAMLANDI";
+            float cW = GameFonts.MeasureText(congrats, 24).X;
+            GameFonts.DrawText(congrats, cx - cW / 2f, cy - 60, 24, SuccessColor);
 
             if (trainedProfile != null)
             {
-                string accText = $"Model Egitildi: {trainedProfile.SubjectName}.json | Dogruluk: %{trainedProfile.TrainingAccuracy * 100:F0}";
-                int accW = Raylib.MeasureText(accText, 18);
-                Raylib.DrawText(accText, (int)(cx - accW / 2), (int)(cy - 10), 18, TextColor);
+                string accText = $"Model Eğitildi: {trainedProfile.SubjectName}.json | Doğruluk: %{trainedProfile.TrainingAccuracy * 100:F0}";
+                float accW = GameFonts.MeasureText(accText, 18).X;
+                GameFonts.DrawText(accText, cx - accW / 2f, cy - 10, 18, TextColor);
             }
 
-            string cont = "Ana menuye donmek icin [ENTER] veya [SPACE] basin.";
-            int contW = Raylib.MeasureText(cont, 18);
-            Raylib.DrawText(cont, (int)(cx - contW / 2), (int)(cy + 50), 18, CueColor);
+            string cont = "Ana menüye dönmek için [ENTER] veya [SPACE] basın.";
+            float contW = GameFonts.MeasureText(cont, 18).X;
+            GameFonts.DrawText(cont, cx - contW / 2f, cy + 50, 18, CueColor);
         }
 
         Raylib.EndDrawing();

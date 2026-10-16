@@ -34,8 +34,11 @@ public sealed class Launcher
 
     public void Run()
     {
-        Raylib.InitWindow(_cfg.WindowWidth, _cfg.WindowHeight, "LSL BCI Ball Game - Ana Menu");
+        Raylib.InitWindow(_cfg.WindowWidth, _cfg.WindowHeight, "LSL BCI Ball Game - Ana Menü");
         Raylib.SetTargetFPS(_cfg.TargetFps);
+
+        // Preload fonts once OpenGL window context is initialized
+        GameFonts.GetFont();
 
         // Ensure at least a default synthetic simulator runs if no hardware EEG is found
         EnsureEegStream();
@@ -44,9 +47,9 @@ public sealed class Launcher
         string[] menuItems =
         [
             "1. Yeni Kalibrasyon Yap ve Profil Kaydet",
-            "2. Kayitli Profil Sec ve BCI Oyunu Oyna",
-            "3. Hizli Oyna (Klavye / Test Modu)",
-            "4. Cikis"
+            "2. Kayıtlı Profil Seç ve BCI Oyunu Oyna",
+            "3. Hızlı Oyna (Klavye / Test Modu)",
+            "4. Çıkış"
         ];
 
         string statusMessage = "";
@@ -84,6 +87,7 @@ public sealed class Launcher
 
         _cts.Cancel();
         _bgSimPublisher?.Dispose();
+        GameFonts.Unload();
         Raylib.CloseWindow();
     }
 
@@ -94,7 +98,7 @@ public sealed class Launcher
             var results = LSL.Resolve($"type='{LslStreamInfo.EegType}'", 1, 1, 0.5);
             if (results.Length == 0)
             {
-                Console.WriteLine("[Launcher] Donanim EEG akisi bulunamadi, sentetik X.on simulatiru baslatiliyor...");
+                Console.WriteLine("[Launcher] Donanim EEG akisi bulunamadi, sentetik X.on simulatoru baslatiliyor...");
                 _bgSimPublisher = new SyntheticEegPublisher();
                 _ = _bgSimPublisher.RunAsync(_cts.Token);
             }
@@ -119,6 +123,7 @@ public sealed class Launcher
             trialsPerRun: 10);
 
         calib.RunSession();
+        Raylib.SetWindowTitle("LSL BCI Ball Game - Ana Menü");
     }
 
     private void RunProfileGameFlow()
@@ -176,6 +181,7 @@ public sealed class Launcher
 
         decodeCts.Cancel();
         decodeTask.Wait(1000);
+        Raylib.SetWindowTitle("LSL BCI Ball Game - Ana Menü");
     }
 
     private void RunQuickGameFlow()
@@ -185,6 +191,7 @@ public sealed class Launcher
 
         using var game = new BallRollGame(_cfg);
         game.Run();
+        Raylib.SetWindowTitle("LSL BCI Ball Game - Ana Menü");
     }
 
     private void DrawMenu(string[] items, int selected, string status)
@@ -196,24 +203,24 @@ public sealed class Launcher
 
         // Title
         string title = "LSL BCI MOTOR IMAGERY OYUNU";
-        int titleW = Raylib.MeasureText(title, 28);
-        Raylib.DrawText(title, (int)(cx - titleW / 2), 50, 28, TextColor);
+        float titleW = GameFonts.MeasureText(title, 28).X;
+        GameFonts.DrawText(title, cx - titleW / 2f, 45, 28, TextColor);
 
         string sub = ".NET 10 / Raylib-cs / X.on Graz-BCI Port";
-        int subW = Raylib.MeasureText(sub, 16);
-        Raylib.DrawText(sub, (int)(cx - subW / 2), 85, 16, DimText);
+        float subW = GameFonts.MeasureText(sub, 16).X;
+        GameFonts.DrawText(sub, cx - subW / 2f, 82, 16, DimText);
 
         // Profiles info
         var profiles = ProfileManager.ListProfiles();
         string profCount = profiles.Count > 0
-            ? $"Kayitli Profiller: {string.Join(", ", profiles)} (Aktif: {profiles[^1]})"
-            : "Kayitli Profil: Yok (Ilk olarak kalibrasyon onerilir)";
-        int pW = Raylib.MeasureText(profCount, 15);
-        Raylib.DrawText(profCount, (int)(cx - pW / 2), 125, 15, profiles.Count > 0 ? SuccessColor : WarningColor);
+            ? $"Kayıtlı Profiller: {string.Join(", ", profiles)} (Aktif: {profiles[^1]})"
+            : "Kayıtlı Profil: Yok (İlk olarak kalibrasyon önerilir)";
+        float pW = GameFonts.MeasureText(profCount, 15).X;
+        GameFonts.DrawText(profCount, cx - pW / 2f, 120, 15, profiles.Count > 0 ? SuccessColor : WarningColor);
 
         // Menu cards
-        int startY = 170;
-        int cardH = 50;
+        int startY = 165;
+        int cardH = 52;
         int cardW = 500;
         int startX = (int)(cx - cardW / 2);
 
@@ -232,14 +239,14 @@ public sealed class Launcher
             }
 
             int textX = startX + 45;
-            int textY = y + 16;
-            Raylib.DrawText(items[i], textX, textY, 18, isHovered ? TextColor : DimText);
+            int textY = y + 15;
+            GameFonts.DrawText(items[i], textX, textY, 18, isHovered ? TextColor : DimText);
         }
 
         // Instructions
-        string hint = "[YUKARI/ASAGI] veya [W/S] ile secin, [ENTER] veya [SPACE] ile baslatin.";
-        int hintW = Raylib.MeasureText(hint, 15);
-        Raylib.DrawText(hint, (int)(cx - hintW / 2), _cfg.WindowHeight - 40, 15, DimText);
+        string hint = "[YUKARI/AŞAĞI] veya [W/S] ile seçin, [ENTER] veya [SPACE] ile başlatın.";
+        float hintW = GameFonts.MeasureText(hint, 15).X;
+        GameFonts.DrawText(hint, cx - hintW / 2f, _cfg.WindowHeight - 40, 15, DimText);
 
         Raylib.EndDrawing();
     }
