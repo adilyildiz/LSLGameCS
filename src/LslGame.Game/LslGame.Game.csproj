@@ -16,6 +16,7 @@
     <ProjectReference Include="..\LslGame.Core\LslGame.Core.csproj" />
     <ProjectReference Include="..\LslGame.Control\LslGame.Control.csproj" />
     <ProjectReference Include="..\LslGame.Online\LslGame.Online.csproj" />
+    <ProjectReference Include="..\LslGame.Simulation\LslGame.Simulation.csproj" />
   </ItemGroup>
 
 </Project>
