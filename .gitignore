@@ -1,6 +1,8 @@
-﻿# Build outputs
+# Build outputs
 bin/
 obj/
+publish/
+profiles/
 *.user
 
 # NuGet

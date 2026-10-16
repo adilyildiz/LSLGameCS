@@ -162,6 +162,31 @@ public sealed class CspModel
 
         return features;
     }
+
+    public double[][]? GetFiltersArray()
+    {
+        if (_filters == null) return null;
+        int rows = _filters.RowCount;
+        int cols = _filters.ColumnCount;
+        var arr = new double[rows][];
+        for (int r = 0; r < rows; r++)
+        {
+            arr[r] = new double[cols];
+            for (int c = 0; c < cols; c++)
+                arr[r][c] = _filters[r, c];
+        }
+        return arr;
+    }
+
+    public void LoadFiltersArray(double[][] filters)
+    {
+        int rows = filters.Length;
+        int cols = filters[0].Length;
+        _filters = Matrix<double>.Build.Dense(rows, cols);
+        for (int r = 0; r < rows; r++)
+            for (int c = 0; c < cols; c++)
+                _filters[r, c] = filters[r][c];
+    }
 }
 
 /// <summary>
@@ -173,6 +198,17 @@ public sealed class LdaClassifier
     private double _bias;
     public string Class1 { get; private set; } = "left";
     public string Class2 { get; private set; } = "right";
+
+    public double[]? GetWeights() => _weights != null ? (double[])_weights.Clone() : null;
+    public double GetBias() => _bias;
+
+    public void LoadParameters(double[] weights, double bias, string class1 = "left", string class2 = "right")
+    {
+        _weights = (double[])weights.Clone();
+        _bias = bias;
+        Class1 = class1;
+        Class2 = class2;
+    }
 
     public void Fit(double[][] X, string[] y)
     {
