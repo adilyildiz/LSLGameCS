@@ -1,0 +1,22 @@
+﻿# Build outputs
+bin/
+obj/
+*.user
+
+# NuGet
+.nuget/
+*.nupkg
+packages/
+
+# VS/Rider
+.vs/
+.idea/
+*.suo
+*.DotSettings.user
+
+# Logs
+*.log
+
+# Tools
+tools/parity/__pycache__/
+tools/parity/*.pyc

@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="SharpLSL" Version="1.17.6" />
+    <PackageReference Include="SharpLSL.Native.win-x64" Version="1.17.6" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\LslGame.Core\LslGame.Core.csproj" />
+  </ItemGroup>
+
+</Project>

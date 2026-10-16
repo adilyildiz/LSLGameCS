@@ -1,0 +1,17 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/LslGame.Acquisition/LslGame.Acquisition.csproj" />
+    <Project Path="src/LslGame.Calibration/LslGame.Calibration.csproj" />
+    <Project Path="src/LslGame.Control/LslGame.Control.csproj" />
+    <Project Path="src/LslGame.Core/LslGame.Core.csproj" />
+    <Project Path="src/LslGame.Game/LslGame.Game.csproj" />
+    <Project Path="src/LslGame.Models/LslGame.Models.csproj" />
+    <Project Path="src/LslGame.Online/LslGame.Online.csproj" />
+    <Project Path="src/LslGame.Processing/LslGame.Processing.csproj" />
+    <Project Path="src/LslGame.SignalQuality/LslGame.SignalQuality.csproj" />
+    <Project Path="src/LslGame.Simulation/LslGame.Simulation.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/LslGame.Tests/LslGame.Tests.csproj" />
+  </Folder>
+</Solution>
